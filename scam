@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Captura de Selfie</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+    #video, #canvas, #preview, #controls {
+      display: block;
+      margin: 0 auto;
+    }
+    #video, #canvas {
+      display: none;
+    }
+    #controls {
+      text-align: center;
+      margin-top: 20px;
+    }
+    #retry, #send {
+      display: inline-block;
+      margin: 5px;
+      padding: 10px 20px;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      font-size: 1em;
+      border-radius: 5px;
+    }
+    #intro {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      font-size: 1.5em;
+      text-align: center;
+    }
+    #intro p {
+      margin: 0.5em 0;
+    }
+    .camera-icon {
+      font-size: 2em;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    #message {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div id="intro">
+    <p>Hora da Foto!</p>
+    <div class="camera-icon" onclick="startCamera()">
+      <img src="https://img.freepik.com/vetores-premium/ilustracao-em-vetor-de-botao-de-aplicativo-3d-isolado-icone-de-camera-branca_541075-1031.jpg?w=826" alt="Ícone de Câmera" width="100">
+    </div>
+  </div>
+  <img id="preview" src="https://globoplay.globo.com/v/903070/" alt="Dona Álvara" width="640" height="480" style="display: none;">
+  <video id="video" width="640" height="480" autoplay></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+  <div id="controls" style="display: none;">
+    <button id="retry">Tirar Outra</button>
+    <button id="send">Enviar</button>
+  </div>
+
+  <script>
+    let intro = document.getElementById('intro');
+    let preview = document.getElementById('preview');
+    let video = document.getElementById('video');
+    let canvas = document.getElementById('canvas');
+    let retryButton = document.getElementById('retry');
+    let sendButton = document.getElementById('send');
+    let context = canvas.getContext('2d');
+    let controls = document.getElementById('controls');
+    let stream;
+
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(mediaStream) {
+          stream = mediaStream;
+          video.srcObject = stream;
+          intro.style.display = 'none';
+          preview.style.display = 'block';
+
+          // Exibe o GIF por 3 segundos, depois ativa a câmera
+          setTimeout(() => {
+            preview.style.display = 'none';
+            video.style.display = 'block';
+            video.play();
+
+            // Tira a foto automaticamente após 3 segundos
+            setTimeout(takePhoto, 3000);
+          }, 3000);
+        })
+        .catch(function(err) {
+          console.log("Erro ao acessar a câmera: " + err);
+        });
+    }
+
+    function stopCamera() {
+      if (stream) {
+        let tracks = stream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      video.style.display = 'none';
+    }
+
+    function takePhoto() {
+      context.drawImage(video, 0, 0, 640, 480);
+      canvas.style.display = 'block';
+      video.style.display = 'none';
+      controls.style.display = 'block';
+      stopCamera();
+    }
+
+    // Tira outra foto
+    retryButton.addEventListener('click', function() {
+      canvas.style.display = 'none';
+      controls.style.display = 'none';
+      video.style.display = 'block';
+      startCamera();
+    });
+
+    // Envia a foto
+    sendButton.addEventListener('click', function() {
+      canvas.toBlob(function(blob) {
+        var formData = new FormData();
+        formData.append('selfie', blob);
+
+        fetch('/enviar-selfie', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Selfie enviada com sucesso:', data);
+          alert('Selfie enviada com sucesso!');
+        })
+        .catch(error => {
+          console.error('Erro ao enviar a selfie:', error);
+          alert('Erro ao enviar a selfie. Tente novamente.');
+        });
+      });
+    });
+  </script>
+</body>
+</html>
